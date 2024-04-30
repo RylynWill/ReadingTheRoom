@@ -1,0 +1,37 @@
+[
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "About this blog"
+  },
+  {
+    "objectID": "posts/welcome/index.html",
+    "href": "posts/welcome/index.html",
+    "title": "Welcome To My Blog",
+    "section": "",
+    "text": "This is the first post in a Quarto blog. Welcome!\n\nSince this post doesn’t specify an explicit image, the first image in the post will be used in the listing page of posts."
+  },
+  {
+    "objectID": "posts/post-with-code/Wicked Problems.html",
+    "href": "posts/post-with-code/Wicked Problems.html",
+    "title": "Wicked Problems Proposal",
+    "section": "",
+    "text": "I am studying How connected do people perceive wicked problems to be. \nBecause I want to find out how flawed individuals view this country to be and how connected they believe problems are with each sharing.\nIn order to help my reader understand The concept of a wicked problem and the impact that it has on the countries current political landscape on policy implementation and governance.\n\n\n\nExtracted Concepts\n\nWicked problems\nPolitics\nPolicy\nGovernance\nperception\n\n\n\n\nOperationalize the concepts\n\nPerception - This is defined as whether or not the person believes the criteria is fair for the problem the algorithm is solving (Nominal) -Yes or No\nWicked Problems- a issue that multiple stakeholders disagree about the best way to solve the problem leading to ineffective policy solutions.\n Governance- how those impower use the rules to guide citizens\nPolicy - laws and directive put into place for people to follow, courses of action for governing officials."
+  },
+  {
+    "objectID": "posts/post-with-code/index.html",
+    "href": "posts/post-with-code/index.html",
+    "title": "Post With Code",
+    "section": "",
+    "text": "This is a post with executable code.\n\n1 + 1\n\n[1] 2"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "ClairVoyant Data Scientist",
+    "section": "",
+    "text": "Wicked Concepts\n\n\n\n\n\n\n\n\n\n\n\n\nRylyn Williams\n\n\n\n\n\n\n  \n\n\n\n\nWicked Problems Proposal\n\n\n\n\n\n\n\n\n\n\n \n\n\n\n\n  \n\n\n\n\nPost With Code\n\n\n\n\n\n\n\nnews\n\n\ncode\n\n\nanalysis\n\n\n\n\n\n\n\n\n\n\n\nApr 30, 2024\n\n\nHarlow Malloc\n\n\n\n\n\n\n  \n\n\n\n\nWelcome To My Blog\n\n\n\n\n\n\n\nnews\n\n\n\n\n\n\n\n\n\n\n\nApr 27, 2024\n\n\nTristan O’Malley\n\n\n\n\n\n\nNo matching items"
+  }
+]

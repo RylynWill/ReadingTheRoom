@@ -2,7 +2,11 @@
 title: "Wicked Concepts"
 author: "Rylyn Williams"
 format: 
-  docx: {}
+  html: 
+    df-print: paged
+    embed-resources: true
+    code-fold: true
+    self-contained-math: true
 ---
 
 ```{r setup, include=FALSE}
