@@ -1,0 +1,3 @@
+"0","cg_tie_df$from <- as.integer(as.factor(cg_tie_df$from))"
+"2","Error: object 'cg_tie_df' not found
+"

@@ -1,0 +1,218 @@
+---
+title: "Lecture 5"
+format: html
+editor: visual
+---
+
+## Quarto
+
+```{r}
+library(tidyverse)
+library(readr)
+library(statnet)
+library(igraph)
+```
+
+```{r}
+load("Wolfe_Primates.rda")
+load("Borgatti_Scientists504.rda")
+load("Newcomb_Fraternity.rda")
+load("Hawthorne_BankWiring.rda")
+load("Krackhardt_HighTech.rda")
+```
+
+```{r}
+# to draw the reciprocated friendship network
+# first symmetrize the network
+# then store this as an additional network 
+Krackhardt_HighTech$Friendship_symmin <- (Krackhardt_HighTech$Friendship) * t(Krackhardt_HighTech$Friendship)
+
+# why using element-wise multiplication?
+# then the result matrix shows what?
+# i.e., 0x0, 1x0, 0x1, 1x1!
+names(Krackhardt_HighTech)
+```
+
+```{r}
+#GENERATE CORDINATES
+# with statnet/sna package: gplot()
+par(mar = c(0, 0, 0, 0)) # remove borders from the picture
+gplot(Krackhardt_HighTech$Friendship_symmin, # gplot()
+      mode = "circle") # locate nodes in a circle
+```
+
+```{r}
+# achieved what we want to have
+# but let's do some more work with this plot
+par(mar = c(0, 0, 0, 0))
+gplot(Krackhardt_HighTech$Friendship_symmin,
+      gmode = "graph", # type of network: undirected (anyway we symmetrized and are focusing only on the reciprocated ties); "digraph" for directed, "twomode" for twomode
+      mode = "circle", # how the nodes are positioned
+      vertex.cex = .8, # the size of the node shapes
+      displaylabels = TRUE, # to add the node labels
+      label.pos = 1, # to position the labels below the node shapes (1: below, 2: left, 3: above, 4: right, 5: over the node)
+      label.cex = .8, # to decrease the size of the node labels
+      edge.col = "grey70" # to make the color of the ties
+)
+# the nodes are placed clockwise in a circle!
+```
+
+```{r}
+#GENERATING CORDIANTE WITH CONTINIOUS VAIRABLES
+names(Wolfe_Primates)
+Wolfe_Primates$ProjectInfo
+Wolfe_Primates$Attributes
+```
+
+```{r}
+# to make a higher rank associated with higher values
+Wolfe_Primates$Attributes <- cbind(Wolfe_Primates$Attributes,
+                                   Rank_rev = 21 - Wolfe_Primates$Attributes$Rank)
+Wolfe_Primates$Attributes
+```
+
+```{r}
+# first check the network data: JointPresence
+# JointPresence: Joint presence at the river was coded as an interaction and these were summed within all pairs. 
+Wolfe_Primates$NetworksDescription
+# In other words, valued!
+Wolfe_Primates$JointPresence
+```
+
+```{r}
+# Let's dichotomize the network so that only stronger ties appear.
+# To decide the cutoff, inspect the distribution of tie strengths
+table(Wolfe_Primates$JointPresence)
+# Let's plot without any coordinates:
+gplot(Wolfe_Primates$JointPresence,
+      gmode = "graph")
+```
+
+```{r}
+# Let's convert the network relation to be 1 if the original tie has a strength of 7 or more:
+
+# Wolfe_Primates$Attributes
+
+par(mar=c(0, 0, 0, 0))
+gplot(Wolfe_Primates$JointPresence > 6, # so that a tie of value 7+ gets a 1
+      gmode = "graph", # undirected (i.e., co-presence)
+      coord = Wolfe_Primates$Attributes[, c(2,4)], # coordinates: column 2( Age), column 4 (Rank_rev)
+      vertex.cex = .8,
+      vertex.col = (Wolfe_Primates$Attributes$Gender == 1) * 10, # a vector which is used to define the color of each node
+      displaylabels = TRUE,
+      label.pos = 1,
+      label.cex = .6,
+      edge.col = "grey80"
+      )
+# yoohoo!
+```
+
+```{r}
+# Let's add x-axis (i.e., age), and y-axis (i.e., rank_rev)
+par(mar=c(0, 0, 0, 0))
+gplot(Wolfe_Primates$JointPresence > 6, # so that a tie of value 7+ gets a 1
+      gmode = "graph", # undirected (i.e., co-presence)
+      coord = Wolfe_Primates$Attributes[, c(2,4)], # coordinates: column 2( Age), column 4 (Rank_rev)
+      vertex.cex = .8,
+      vertex.col = (Wolfe_Primates$Attributes$Gender == 1) * 10, # a vector which is used to define the color of each node
+      displaylabels = TRUE,
+      label.pos = 1,
+      label.cex = .6,
+      edge.col = "grey80"
+      )
+# syntax:
+# arrows (x0, y0, x1, y1, length)
+arrows(.2, .2, (max(Wolfe_Primates$Attributes$Age)+min(Wolfe_Primates$Attributes$Age))+.2, .2, length = 0.1)
+arrows(.2, .2, .2, (max(Wolfe_Primates$Attributes[,2])+min(Wolfe_Primates$Attributes[,2])), length = 0.1)
+text(0, (max(Wolfe_Primates$Attributes$Rank)+min(Wolfe_Primates$Attributes$Rank))-.5, labels="Rank",
+     cex=0.8, pos=4)
+text((max(Wolfe_Primates$Attributes$Age)+min(Wolfe_Primates$Attributes$Age)),.2, labels="Age",
+     cex=0.8, pos=3)
+# What story could you tell with this plot? :-D
+```
+
+```{r}
+#GENERATING CORDINATES WITH NORMAL ATTRIBUTES
+# Do you remember that any node attribute can be converted into a matrix
+# e.g., a dayd has a value 1 if they belong to the same category, 0 of they don't
+# We can use this matrix to generate the positions of the nodes in the figure.
+
+# Let's first generate the matrix containing same departmenr, 
+# call it same.dept.m
+# First, extract department info 
+# matrix(elements, nrow, ncol)
+dept.m <- matrix(Krackhardt_HighTech$Attributes$Department,
+                 dim(Krackhardt_HighTech$Friendship)[1],
+                 dim(Krackhardt_HighTech$Friendship)[1]  )
+dept.m
+  same.dept.m <- (dept.m == t(dept.m)) * 1 # dept.m == t(dept.m): TRUE (1) OR FALSE (0)
+
+same.dept.m           
+```
+
+```{r}
+# First, create an object, coord_samedept
+# using the new matrix, same.dept.m
+coord_samedept <- gplot(same.dept.m)
+# Do you remember how many departments we have?
+unique(Krackhardt_HighTech$Attributes$Department) #0, 1, 2, 3, 4 : 5 in total
+# Let's check coord_samedept
+coord_samedept # two vectors for x and y!
+```
+
+```{r}
+# Friendship: again symmetrized
+par(mar = c(0, 0, 0, 0))
+gplot((Krackhardt_HighTech$Friendship)*t(Krackhardt_HighTech$Friendship), 
+      gmode="graph",
+      coord=coord_samedept, # this is what we've just created!
+      vertex.cex=.8,
+      displaylabels=TRUE, 
+      label.pos=1,
+      label.cex=.7,
+      edge.col="grey70")
+
+# we can use the coordinate also for the advice network
+par(mar = c(0, 0, 0, 0))
+gplot((Krackhardt_HighTech$Advice)*t(Krackhardt_HighTech$Advice), # advice network
+      gmode="graph",
+      coord=coord_samedept, # the coordinates we used above
+      vertex.cex=.8,
+      displaylabels=TRUE, 
+      label.pos=1,
+      label.cex=.7,
+      edge.col="grey70")
+```
+
+```{r}
+par(mfrow=c(1, 2)) # place two plots side by side
+# friendship
+gplot((Krackhardt_HighTech$Friendship)*t(Krackhardt_HighTech$Friendship), 
+      gmode="graph",
+      coord=coord_samedept, # this is what we've just created!
+      vertex.cex=.8,
+      displaylabels=TRUE, 
+      label.pos=1,
+      label.cex=.7,
+      edge.col="grey70")
+title(main = "Krackhardt_HighTech",
+      sub = "Friendship",
+      cex.main = 1,
+      col.main = "grey")
+
+
+# Advice
+gplot((Krackhardt_HighTech$Advice)*t(Krackhardt_HighTech$Advice), # advice network
+      gmode="graph",
+      coord=coord_samedept, # the coordinates we used above
+      vertex.cex=.8,
+      displaylabels=TRUE, 
+      label.pos=1,
+      label.cex=.7,
+      edge.col="grey70")
+title(main = "Krackhardt_HighTech",
+      sub = "Advice",
+      cex.main = 1,
+      col.main = "grey")
+
+```

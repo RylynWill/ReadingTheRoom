@@ -1,0 +1,1197 @@
+---
+title: "Tutorial: Centrality"
+subtitle: "DACSS 695N (Social Network Analysis, Spring 2024"
+date: "March 27, 2024"
+format: 
+  html:
+    toc: true
+    toc-depth: 3
+    toc-title: Contents
+    toc-location: left
+    code-fold: false
+    html-math-method: katex
+    theme: flatly
+    smooth-scroll: true
+    link-external-icon: true
+    link-external-newwindow: true
+    citations-hover: true
+    footnotes-hover: true
+    font-size: 80%
+editor: visual
+---
+
+# Introduction
+
+This tutorial will demonstrate how to measure aspects of network data introduced in Lecture on Centrality:
+
+-   Network Density
+-   Vertex degree
+-   Vertex degree in directed networks
+-   Vertex degree summary statistics
+-   Vertex degree distribution
+-   Identifying outlier nodes
+-   Network centralization
+-   Eigenvector centrality & centralization
+-   Derived and reflected centrality & centralization
+-   Bonacich power centrality & centralization
+-   Closeness centrality & centralization
+-   Betweenness centrality & centralization
+-   Burt's network constraint
+-   Gould-Fernandez Brokerage
+
+We will be using the following datasets for this tutorial. Go to Canvas and download the file "Tutorial_Centrality.rdata."
+
+| file                                  | info                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|----------------|--------------------------------------------------------|
+| climate.ig/ climate.stat              | from Swiss Climate Influence network. It contains loops because some states have nominated themselves.                                                                                                                                                                                                                                                                                                                |
+| climpref.ig/ climpref.stat            | from the Swiss Climate Data. It is an adjacency matrix created for stakeholders in the Swiss climate policy debate, indicating how different node's policy preferences are. The data includes several node attributes.                                                                                                                                                                                                |
+| climinfl.ig/ climinfl.stat            | from the Swiss Climate Data. Its adjacency matrix indicates whether or not the stakeholders nominated each other (or themselves) as influential in the policy debate. The original network contains loops, which are handled better by statnet.                                                                                                                                                                       |
+| gotbook.ig/ gotbook.stat              | from the Game of Thrones book data. This network was scraped from the 5 published books, and a tie indicates the number of times that two characters are mentioned within close proximity of each other. This abbreviated dataset contains only of characters who appear at least 10 times throughout the 5 books, and all ties between characters who co-occur in the text together fewer than 5 times were removed. |
+| gotlike.ig/ gotlike.stat              | The Game of Thrones Like-Dislike network. It is a small, weighted, directed network showing characters affinity for one another. The degree to which a character likes another is held by the "weight" attribute and ranges between -5 and 5.                                                                                                                                                                         |
+| imf2014.ig, imf2014.stat, imf100.stat | from the IMF. A tie represents the value of a country's securies held by another country in 2014. 'imf100.stat' is a network object, where a 0/1 tie indicates that country $i$ holds at least 100 million in securities of country $j$.                                                                                                                                                                              |
+| trade2007.ig/ trade2007.stat          | from the Correlates of War data. A tie indicates annual trade flows between nation-states in 2007.                                                                                                                                                                                                                                                                                                                    |
+
+```{r echo=TRUE, message=FALSE}
+#rm(list=ls())
+# load 
+# adjust this!
+load("data/tutorial_centrality_sp24_canvas.rdata")
+load("data/trade2007.stat.rdata")
+
+library(statnet)
+library(igraph)
+
+
+# check 
+climate.stat
+climinfl.stat
+climpref.stat
+gotbook.stat
+gotlike.stat
+imf100.stat
+imf2014.stat
+trade100.stat
+trade2007.stat
+```
+
+# Basic Network Description
+
+Inspect the basic network descriptors for the `trade2007` network. For this exercise, refer to Tutorials 1 and 2.
+
+1.  Describe the network: Find network size, type (un/directed, un/weighted, bipartite) and available attributes of vertices and edges.
+
+```{r echo=TRUE}
+# Find network size and type
+list.network.attributes(trade100.stat)
+```
+
+2.  Dyad Census: Inspect the dyads in the network.
+
+```{r echo=TRUE}
+# Classify all dyads in the network: igraph
+igraph::dyad.census(trade2007.ig)
+
+
+# Classify all dyads in the network: statnet
+sna::dyad.census(trade2007.stat)
+```
+
+3.  Triad Census: Are there any interesting patterns for triads in the network?
+
+```{r echo=TRUE}
+# Classify all triads in the network: igraph
+igraph::triad_census(trade2007.ig)
+
+# Classify all triads in the network: statnet
+sna::triad.census(trade2007.stat)
+```
+
+4.  Clustering and Transitivity: Calculate the global and average clustering coefficient, as well as the network transitivity.
+
+```{r echo=TRUE}
+# get global clustering coefficient: igraph
+igraph::transitivity(trade2007.ig, type = "global")
+
+# get average local clustering coefficient: igraph
+igraph::transitivity(trade2007.ig, type = "average")
+
+# get network transitivity: statnet
+sna::gtrans(trade2007.stat)
+```
+
+5.  Component Structure and Isolates: Inspect the component structure of the network. Are there any isolates?
+
+```{r echo=TRUE}
+# get the number of components: igraph
+igraph::components(trade2007.ig)$no # number of components
+
+# get the size of each component
+igraph::components(trade2007.ig)$csize # size of each component
+```
+
+# Density
+
+The density of a network is defined as the proportion of ties present out of all possible ties in a network. Note that the network density command ignores edge values at present. If loops are present or there are multiple edges between two nodes, then the results may not make sense.
+
+```{r echo=TRUE}
+
+# get network density: igraph
+graph.density(climate.ig)
+
+
+# get network density: statnet
+network::network.density(climate.stat)
+```
+
+The output for the two packages is different. A closer look at the data suggests that a major difference between them is how the two density calculations deal with "loops," or ties from an actor to themselves.
+
+```{r echo=TRUE}
+climate.stat # loops=TRUE
+```
+
+Some, but not all, actors in the climate network nominate themselves (32 of 34 actors). It appears that `network.density` recognizes that loops are possible, while igraph provides an incorrect density calculation as the default assumes that loops are not included but does not remove them. Therefore, the default calculation includes the loops in the numerator but not the denominator of the density calcualtion. After including the option `loops=TRUE`, igraph provides an updated answer that accounts for loops in both numeratorand denominator, same as the answer given by `network.density.`
+
+```{r echo=TRUE}
+igraph::graph.density(climate.ig, loops=TRUE)
+```
+
+There are often good reasons to ignore self-nominations even when they are present, however. The `gden` command includes loops but has an option to ignore the diagonal. Then it calculates density as all ties between actors *i* and *j*--so not including self-nominations. *Note:* `gden()` and `network.density()` deal with missing edges differently. The former omits missing edges from numerator but not denominator, the latter ommits from both.
+
+```{r}
+# get network density without loops: statnet
+sna::gden(climate.stat, diag=FALSE)
+```
+
+## Exercise: Network Density
+
+Calculate network density for the `trade2007` network. Given the attributes of this network, does it matter which package you use for this calcualtion? Based on the loops explanation for the climate output, could this account for the difference? What else could be going on?
+
+```{r}
+# get network density: igraph or statnet
+graph.density(trade2007.ig)
+
+# statnet
+network::network.density(trade2007.stat)
+sna::gden(trade2007.stat, diag = FALSE)
+
+```
+
+# Vertex Degree
+
+One measure of node centrality or popularity is node degree: A count of the relationships that a node is involvd in or the count of the edges that are incident to a vertex. Vertex degree is a description of an individual node; each vertex in a network may have a different node degree.
+
+```{r echo=TRUE}
+# calculate average network degree: igraph
+igraph::degree(climate.ig)
+
+# calculate average network degree: statnet
+sna::degree(climate.stat)
+```
+
+Two differences between the two commands are clearly visible. First, `sna::degree` ignores loops or self-nominations, while `igraph::degree` includes loops. Including the option `loops=FALSE` in the `igraph::degree` command will make the two commands equivalent for this data set. Note that setting `diag=TRUE` in `sna::degree` does not guarantee equivalence as statnet single counts the loops in a directed network, while igraph double-counts the loops.
+
+Second, the igraph command also provides node name along with node degree, which can be helpful if you would like to know the degree of a particular node. As you can imagine, however, this list can be quite difficult to interpret in datasets with 100s or 1000s of nodes or when nodes have long names. Therefore, we rarely use the degree command to list the degree of all nodes, but instead use the network degree command to:
+
+-   compute network summary statistics, such as average network degree
+-   graph the network degree distribution, or
+-   identify particular nodes, such as the five nodes with the most contacts.
+
+# Review: Create a DataFrame
+
+Regardless of the way(s) in which we plan to use network degree measures, it will be useful to store vertex attributes such as degree in a table of node attributes. This table, or data frame, of node measures can even be used in traditional econometric models that include network structure variables. Here is an example of the basic R command to create a dataframe with named variables `names` and `degree`, and row names set as the entries in the `names` variable.
+
+```{r echo=TRUE, message = FALSE}
+detach(package:igraph)
+library(statnet)
+# create a dataset of vertex names and degree: statnet
+climate.nodes <- data.frame(name = climate.stat %v% "vertex.names",
+                            degree = sna::degree(climate.stat))
+
+climate.nodes
+```
+
+Here are the same commands in igraph, but not evaluated to avoid repetition.
+
+```{r echo=TRUE}
+# create a dataset of vertex names and degree: igraph
+climate.nodes2 <- data.frame(name = igraph::V(climate.ig)$name,
+                             degree = igraph::degree(climate.ig))
+climate.nodes2
+```
+
+For those who need a quick breakdown of what these commands do:
+
+-   `climate.nodes` is a dataframe that we are creating within R.
+-   `names` and `degree` are two variables (columns) in `climate.nodes`
+-   the `names` variable is made up of the vertex names from `climate.ig` or `climate.statnet`
+-   the `degree` variable is calculated from the cliamte dataset.
+-   `head()` returns the first six rows of a dataframe.
+
+## Exercise: Create a dataframe
+
+You can do the same thing with the `trade2007` dataset. The goal is to create a dataframe of names and degrees, so using the code above, simply replace the cliamte elements with `trade2007`.
+
+```{r echo=TRUE}
+# create a datset of vertex names and degree: igraph or statnet
+trade2007.nodes <- data.frame(name=trade100.stat %v% "vertex.names", degrees = sna::degree(trade2007.stat))
+head(trade2007.nodes)
+```
+
+# Degree in Directed Networks
+
+In a directed network, it is possible to calcualte both *indegree* or the total number of nodes that send a tie to the focal node, and *outdegree*, or the total number of nodes to which the focal nodes sends a tie. R allows you to specify whether you want to calcualte indegree, outdegree, or total degree when working with a directed network. By default, the function `degree` produces a count of total degree.
+
+```{r echo=TRUE}
+# calculate in-degree: statnet
+sna::degree(climate.stat, cmode = "indegree")
+
+# outdegree: statnet
+sna::degree(climate.stat, cmode = "outdegree")
+```
+
+Here are the same commands in igraph, but not evaluated to avoid repetition
+
+```{r echo=TRUE}
+# calcualte in-degree: igraph
+igraph::degree(climate.ig, mode = "in", loops = FALSE)
+
+# outdegree
+igraph::degree(climate.ig, mode = "out", loops = FALSE)
+```
+
+To make use of these calculations, you'll want to attach them to the dataframe you created in the last exercise. To do this, we can use the `mutate` command to add columns onto the `climate.nodes` object created before.
+
+```{r echo=TRUE, message = FALSE}
+# statnet version:
+library(tidyverse)
+climate.nodes <- climate.nodes %>%
+  mutate(indegree = sna::degree(climate.stat, cmode = "indegree"),
+         outdegree = sna::degree(climate.stat, cmode = "outdegree"))
+climate.nodes
+```
+
+Here are the same commands in igraph, but not evaluated to avoid repetition.
+
+```{r echo=TRUE}
+# igraph version:
+climate.nodes.ig <- climate.nodes2 %>%
+  mutate(indegree = igraph::degree(climate.ig, mode = "in", loops = FALSE),
+         outdegree = igraph::degree(climate.ig, mode = "out", loops = FALSE))
+
+climate.nodes.ig
+```
+
+## Exercise
+
+Now, do the same for the `trade2007` network. Create a dataframe that includes all three measures of degree: total degree, indegree, and outdegree. To do this, you'll simply need to add the codes of `totdegree,` `indegree` and `outdegree` to replace the initial `degree` column.
+
+```{r echo=TRUE}
+# statnet version:
+trade2007.nodes<- trade2007.nodes %>%
+  mutate(indegree = sna::degree(trade2007.stat, cmode = "indegree"),
+         outdegree = sna::degree(trade2007.stat, cmode = "outdegree"))
+head(trade2007.nodes)
+
+```
+
+# Network Degree Summary Statistics
+
+What does the distribution of these scores look like? We can use the basic `summary` command to find the range, mean, median, and standard deviation of a vector.
+
+```{r echo=TRUE}
+# create a vector with the numbers 1 to 10
+v <- c(1:10)
+# sumamry statistics of x
+summary(v)
+```
+
+Now we can use the same command to get basic summaries for all the columns in a dataframe. In this case, we will get summary statistics for the climate network node attributes:
+
+```{r echo=TRUE}
+# get summary statistics for node attributes
+summary(climate.nodes)
+```
+
+## Exercise: Summary statistics
+
+Try getting summary statistics for node degree in the `trade2007` network:
+
+```{r echo=TRUE}
+# get sumamry statistics for trade network node attributes
+summary(trade2007.nodes
+        )
+```
+
+## ADVANCED exercise:
+
+Try getting summary statistics for node degree for the binary network degree, creating the appropriate dataframe in this exercise and getting the summary.
+
+```{r}
+# get summary statisticsfor binary trade100 network node attributes
+summary(trade100.stat)
+```
+
+# ADVANCED: Summaries by Group
+
+There are often times when we may want to know about groups of nodes, not everyone in the network. For example, maybe we care about average network characteristics of characters in the game of thrones grouped by family or age. Here is a basic example of creating summary statistics for groups.
+
+Try attaching the `type5` attribute to the cliamte node dataframe. Can you `summarise` the data after grouping by organization `type`?
+
+```{r echo=TRUE}
+# attach the additional column
+climate.nodes$type5 <- igraph::V(climate.ig)$type5
+head(climate.nodes)
+
+climate.nodes %>%
+  group_by(type5) %>%
+  select(indegree, outdegree) %>%
+  summarise_all(., funs(mean, sd, n()))
+```
+
+# Network Degree Distribution
+
+The command `hist` is a basic R command that draws a histogram of vector of data. We can set options such as `main` for the main title of the histogram, and `xlab` for the label of the x-axis.
+
+Let's check out the histogram for the distribution of node degree for the climate network. What do you make of the differences in the two histograms?
+
+```{r echo=TRUE}
+# create a histogram of Climate Influence Indegree
+hist(climate.nodes$indegree,
+     main = "Climate Influence: In-degree Distribution",
+     xlab = "Nomiantions Received")
+```
+
+```{r echo=TRUE}
+hist(climate.nodes$outdegree,
+     main = "Climate Influence: Out-degree Distribution",
+     xlab = "Nominations made")
+```
+
+## Exercise
+
+Now try creating histograms of in and outdegree for the `trade2007` network.
+
+```{r}
+# indegree distribution
+hist(trade2007.nodes$indegree,
+     main = "Traade Influence: Out-degree Distribution",
+     xlab = "Nominations made")
+
+```
+
+```{r echo=TRUE}
+# outdegree distribution
+
+hist(trade2007.nodes$outdegree,
+     main = "Trade Influence: Out-degree Distribution",
+     xlab = "Nominations made")
+```
+
+# Network Degree Centralization
+
+We can also calculate a network-level centralization score based on actor degree scores. The statnet command is a little more straightforward, as the same `centralization()` command is used to find network centralization regardless of which measure of centralization you are interested in (e.g., degree, betweenness, closeness, eigenvalue, etc.). All you need to do is specify the `degree` option to calculate degree centralization, and use the same options as used in the `degree` command. What might be the interpretation of different centralization scores for in-degree and out-degree in the climate network?
+
+```{r echo=TRUE}
+# get network centralization score: statnet
+centralization(climate.stat, degree, cmode = "indegree")
+
+centralization(climate.stat, degree, cmode = "outdegree")
+```
+
+The `centr_degree` function returns an object with several components, we are interested in the `centralization` component. It requires specification of options as in the `igraph::degree` command used above.
+
+```{r echo=TRUE}
+# get network centralization score: igraph
+igraph::centr_degree(climate.ig, loops = FALSE, mode = "in")$centralization
+
+igraph::centr_degree(climate.ig, loops = FALSE, mode = "out")$centralization
+
+```
+
+## Exercise: Network degree centralization
+
+Calculate network degree centralization scores for both in-degree and out-degree using the 2007 trade network. Compare to the degree centralization scores for the binary network with a threshold of \$100 million for a tie.
+
+```{r echo=TRUE}
+igraph::centr_degree(trade2007.ig, loops = FALSE, mode = "in")$centralization
+
+igraph::centr_degree(trade2007.ig, loops = FALSE, mode = "out")$centralization
+
+centralization(trade100.stat, degree, cmode = "indegree")
+
+centralization(trade100.stat, degree, cmode = "outdegree")
+
+```
+
+# Identifying specific nodes
+
+There may be times when we are interested in identifying and describing nodes with specific values, such as the nodes with the most or the fewest number of network ties. In order to identify these nodes, we will need to sort vectors and print out a subset of the possible nodes.
+
+## Basic commands: sorting
+
+```{r echo=TRUE}
+# example: sorting
+df <- data.frame(scores = c(55, 23, 48, 3, 112, 14, 20),
+                 type = c("A", "B", "A", "B", "B", "A", "B"))
+arrange(df, scores)
+```
+
+using the `desc()` option in `arrange` puts the largest values at the top of the list rather than the bottom.
+
+```{r echo=TRUE}
+arrange(df, desc(scores))
+```
+
+Using the `slice(t)` command tells R to return only the t-th row of the data object. In this case, we tell R to return rows 1, 2, and 3 of the data object arranging in descending order by scores--or the top three scores.
+
+```{r echo=TRUE}
+arrange(df, desc(scores)) %>%
+  slice(1:3)
+```
+
+## Exercise: sorting
+
+Try sorting a vector of vertex degree for the climate data, and list the 5 nodes with the highest in-degree. Can you also list the five nodes with the lowest in-degree? How about the highest out-degree?
+
+```{r echo=TRUE}
+# sort the indegree vector of nodes in the climate network
+
+
+arrange(climate.nodes, desc(indegree)) |>
+  slice(1:5)s
+```
+
+```{r echo=TRUE}
+# sorting outdegree 
+arrange(climate.nodes,
+        desc(outdegree)) %>%
+  slice(1:5)
+```
+
+```{r echo=TRUE}
+arrange(climate.nodes, indegree) %>%
+  slice(1:5)
+```
+
+## Exercise 2
+
+Do the same thing for the `trade2007` network.
+
+```{r echo=TRUE}
+arrange(trade2007.nodes, desc(indegree)) |>
+  slice(1:5)
+```
+
+```{r echo=TRUE}
+arrange(trade2007.nodes, desc(outdegree)) |>
+  slice(1:5)
+```
+
+```{r echo=TRUE}
+arrange(trade2007.nodes, indegree) |>
+  slice(1:5)
+```
+
+## Advanced exercise
+
+Can you find the low and high degree nodes for the binary trade network? You will need to use some creativity in figuring out the best way to code this!
+
+```{r echo=TRUE}
+# sort to find 5 highest and lowest degree nodes in trade100
+temp <- data.frame(
+  name = trade100.stat %v% "vertex.names",
+  indegree = sna::degree(trade100.stat, cmode = "indegree"),
+  outdegree = sna::degree(trade100.stat, cmode = "outdegree")
+) 
+
+temp %>%
+  arrange(desc(indegree)) %>%
+  slice(1:5)
+  
+temp %>%
+  arrange(indegree) %>%
+  slice(1:5)
+
+temp %>%
+  arrange(outdegree) %>%
+  slice(1:5)
+
+temp %>%
+  arrange(desc(outdegree)) %>%
+  slice(1:5)
+```
+
+# Basic Network Description (2)
+
+Inspect the basic network descriptors for the `imf2014` network.
+
+```{r echo=TRUE}
+# Find network size and type
+ecount(imf2014.ig)
+vcount(imf2014.ig)
+
+```
+
+## Basic network structure
+
+Inspect the dyads, traids, and component structure of the `imf2014` and `gotlike` networks.
+
+```{r echo=TRUE}
+# dyad census, triad census, number and size of components, isolates
+igraph::dyad.census(imf2014.ig)
+igraph::triad_census(imf2014.ig)
+igraph::components(imf2014.ig)$no
+igraph::components(imf2014.ig)$csize
+isolates(imf2014.stat)
+```
+
+ˆ
+
+```{r}
+igraph::dyad.census(gotbook.ig)
+igraph::triad_census(gotbook.ig)
+igraph::components(gotbook.ig)$no
+igraph::components(gotbook.ig)$csize
+isolates(gotbook.stat)
+```
+
+Create a dataframe with the in, out and total degree values of the network.
+
+```{r}
+imf2014.nodes <- as.data.frame(imf2014.nodes)
+```
+
+```{r echo=TRUE, message=FALSE}
+library(igraph)
+# igraph version:
+
+imf2014.nodes<-data.frame(name=V(imf2014.ig)$name,
+    totdegree=igraph::degree(imf2014.ig, loops=FALSE),
+    indegree=igraph::degree(imf2014.ig, mode="in", loops=FALSE),
+    outdegree=igraph::degree(imf2014.ig, mode="out", loops=FALSE))
+
+# statnet version:
+imf2014.nodes<-data.frame(name=imf2014.stat%v%"vertex.names",
+    totdegree=sna::degree(imf2014.stat),
+    indegree=sna::degree(imf2014.stat, cmode="indegree"),
+    outdegree=sna::degree(imf2014.stat, cmode="outdegree"))
+```
+
+Do the same for the Game of Thrones data (gotlike.stat/gotlike.ig)
+
+```{r echo=TRUE}
+# igraph version:
+
+# statnet version:
+```
+
+View the top 5 values of your new dataframe.
+
+```{r echo=TRUE}
+head(imf2014.nodes)
+```
+
+# Eigenvector Centrality
+
+We use `evcent` to calculate node level eigenvector centrality scores in statnet, and the familiar `centralization` score with the correct option to calculate network centralization. We are using the `head` command to just view the first few scores.
+
+```{r echo=TRUE}
+# calculate eigenvector centrality scores: statnet
+head(sna::evcent(imf2014.stat, ignore.eval = TRUE))
+
+detach(package:igraph)
+library(statnet)
+# calculate eigenvector centralization index: statnet
+# (if the following line spits out an error message, then detach igraph package then re-run)
+centralization(imf2014.stat, evcent)
+
+```
+
+The igraph command outputs a list of results that can be accessed by name. The eigenvector centrality score for each node can be accessed by calling `$vector`. Another element that might be of interest is the graph level eigenvector centralization score, `$centralization`.
+
+```{r echo=TRUE}
+# calculate eigenvector centrality scores: igraph
+temp <- igraph::centr_eigen(imf2014.ig, directed = T)
+
+names(temp)
+
+length(temp$vector)
+
+head(temp$vector)
+
+
+head(temp$centralization)
+```
+
+Once again, igraph and statnet give completely different scores. This can be attributed in part to the fact that by default, igraph rescales scores with the option `scale=TRUE`. Another contributor may be the defaults for using weighted network data, although turning off the default weights for statnet using the option `ignore.eval=TRUE` doesn't seem to matter.
+
+I suspect that the remainder of the difference in the scores produced by the two measures is attributable to different approaches to dealing with directed networks. A little digging on the internet reveals that part of the issue may also be due to the fact that we are providing directed graphs to the routine. Evidently, igraph is using the incoming ties to calculate eigenvector centrality. The developer of statnet discusses the issue of eigenvector centrality for directed networks more generally here, and recommends using Bonachic power and other related measures for directed networks.
+
+Add the eigenvector centrality node score onto your node level measures dataframe for `imf2014`, and find the top 5 values.
+
+```{r echo=TRUE}
+# add eigenvector centrality to node measures
+imf2014.nodes$eigen <- sna::evcent(imf2014.stat)
+
+# arrange descending and return top 5 nodes
+arrange(imf2014.nodes,
+        desc(eigen)) %>%
+  slice(1:5)
+```
+
+## Exercise: Eigenvector Centrality
+
+Create a similar table of the eigenvector values for the `gotlike` dataset, and find the 5 nodes with highest eigenvector centrality.
+
+```{r echo=TRUE}
+# add eigenvector centrality to node measures
+
+
+# arrange descending and return top 5 nodes
+
+```
+
+## ADVANCED Exercise 2: Eigenvector Centrality
+
+Now try creating a similar table of the eigenvector centrality values for the `imf100` version of the `imf2014` data, and find the 5 nodes with highest eigenvector centrality. There is no existing `imf100.node` dataframe, and it will need to be created.
+
+```{r echo=TRUE}
+# create node measures including eigenvector centrality
+
+# arrange descending and return top 5 nodes
+
+```
+
+```{r echo=TRUE}
+# add eigenvector centrality to node measures
+
+```
+
+# Bonacich Power Centrality
+
+Now, let's try calculating the node-level bonacich power centrality score. This gives us the bonacich power score for each node. Once again, we will only return the first few values using `head`.
+
+```{r echo=TRUE}
+# calculate bon. power centrality for nodes: igraph
+head(igraph::power_centrality(imf2014.ig))
+```
+
+```{r echo=TRUE}
+# calculate bon. power centrality for nodes: statnet
+head(sna::bonpow(imf2014.stat))
+```
+
+This time, the two approaches are pretty similar. There is one exception visible--China. A good guess would be that the source of that difference is a major contributing factor to the differences in eigenvector centrality scores. To see why this is, compare the eigenvector scores for China in the previous exercise.
+
+Note that the routine used by `bonpow()` doesn't appear to incorporate weights, and fails when the adjacency matrix is singular. A matrix is simgular when any column can be expressed as a linear combination of other columns, as might be found if a node has no connections or if two nodes have the same pattern of friendships). Singular matrices are therefore more likely when weights are ignored. If `bonpow()` returns NaN for all nodes, try substituting `power_centrality()`.
+
+## Exercise: Bonacich Power Centrality
+
+Add the bonacich power centrality scores to the `gotlike.nodes` dataset, and view the nodes with the five highest scores.
+
+```{r echo=TRUE}
+# add bonacich power centrality to node measures
+
+
+# arrange descending and return top 5 nodes
+
+```
+
+Now try doing the same for the gotbook data. Are there any differences? What do you expect is true about the different networks?
+
+```{r echo=TRUE}
+# add bonacich power centrality to node measures
+
+
+# arrange descending and return top 5 nodes
+
+```
+
+# Derived and Reflected Centrality
+
+There are no standard routines in igraph or statnet to calculate the **derived** and **reflected** centrality scores. Instead, we need to extract the underlying network adjacency matrix and run some simple matrix operations on the extracted matrix. The basic intuition is that these two scores together comprise the Eigenvector centrality score, and thus we can parse them out manually.
+
+```{r echo=TRUE}
+mat2014 <- as.matrix(igraph::as_adjacency_matrix(imf2014.ig, attr = "weight"))
+
+```
+
+To calculate the proportion of centrality that is received, we first square the adjacency matrix. The diagonal of the adjacency matrix is equal to the square of node degree. We then divide this diagonal (squared degree) by total squared indegree (calculated by `rowSuns`) to get the proportion of received centrality.
+
+```{r}
+# square the adjacency matrix
+mat2014sq <- t(mat2014) %*% mat2014
+
+# calculate the proportion of reflected centrality
+imf2014.nodes$rc <- diag(mat2014sq) / rowSums(mat2014sq) 
+
+# replace missing values with 0
+imf2014.nodes$rc <- ifelse(is.nan(imf2014.nodes$rc), 0,imf2014.nodes$rc)
+
+# calculate received eigenvalue centrality
+imf2014.nodes$eigen.rc <- imf2014.nodes$eigen * imf2014.nodes$rc
+```
+
+If total centrality is 1, then derived centrality is simply 1 --the proportion of eigenvector centrality due to received centrality.
+
+```{r echo=TRUE}
+# calculate the proportion of derived centrality
+imf2014.nodes$dc <- 1 - diag(mat2014sq)/rowSums(mat2014sq)
+
+# replace missing values with 0
+imf2014.nodes$dc <-  ifelse(is.nan(imf2014.nodes$dc), 1, imf2014.nodes$dc)
+
+# calculate received eigenvalue centrality
+imf2014.nodes$eigen.dc <- imf2014.nodes$eigen * imf2014.nodes$dc
+```
+
+# Compare centrality Scores
+
+We built the node measure dataframe above, now lets sort and inspect.
+
+```{r echo=TRUE}
+# identify nodes with five highest received centrality scores
+arrange(imf2014.nodes, 
+        desc(eigen.rc)) %>%
+  slice(1:5)
+```
+
+```{r echo=TRUE}
+# identify nodes with five highest derived centrality scores
+arrange(imf2014.nodes,
+        desc(eigen.dc)) %>%
+  slice(1:5)
+```
+
+We can also use the tidyverse command `filter` to select particular cases to view. For example, we might want to compare the scores for a particular country, such as Costa Rica.
+
+```{r echo=TRUE}
+filter(imf2014.nodes, name == "Costa Rica")
+```
+
+## Exercise: Compare Centrality Scores
+
+```{r echo=TRUE}
+# compare centrality scores for Belgium and Italy
+
+```
+
+## ADVANCED: Centrality Score Distributions
+
+Let's look at the distributions of these scores. While we could use the `hist` command multiple times to visualize each node score separately, using `tidyr` and `ggplot2` provides an easier solution to view the distribution of all variables in the dataset at once. We first reshape the dataset, then use `ggplot` grouping by variable name.
+
+```{r echo=TRUE}
+library(ggplot2)
+
+imf2014.nodes %>%
+  select(-name) %>%
+  gather() %>%
+  ggplot(aes(value)) +
+    geom_histogram() +
+    facet_wrap(~key, scales = "free")
+
+  
+```
+
+## Exercise: Inspect Distributions of Centrality Measures
+
+Using the same approach, can you inspect the distribution of centrality scores in the imf100 dataset? How about the gotbook dataset or gotlike dataset? What similarities and differences do you find?
+
+```{r echo=TRUE}
+
+```
+
+```{r echo=TRUE}
+# gotbook.nodes 
+```
+
+```{r echo=TRUE}
+# gotlike.nodes
+```
+
+## ADVANCED: Centrality Measure Correlations
+
+Another neat way to see how related the scores are to one another is to find correlations between all of them and then visualize. Traditionally, this is a difficult step in data exploration and takes a lot of manual manipulation. A new package, `corr` adopts the tidyverse approach to exploring correlations. See the original blogpost by Simon Jackson for more information. The commands just automatically take care of lots of things that you would otherwise need to do manually. Let's look at the correlations between all scores now.
+
+```{r echo=TRUE}
+library(corrr)
+
+temp <- imf2014.nodes %>%
+  dplyr::select(totdegree, indegree, outdegree, eigen,
+         eigen.rc, eigen.dc,
+         starts_with("bon")) %>%
+  correlate() %>%
+  rearrange()
+
+```
+
+```{r echo=TRUE}
+fashion(temp)
+```
+
+```{r echo=TRUE}
+rplot(temp)
+```
+
+## Exercise: Check Correlations of Centrality Measures
+
+Try creating a similar plot for one or more of the other networks using the correct node measure dataframes.
+
+```{r echo=TRUE}
+
+```
+
+# Basic Network Description (3)
+
+1.  Inspect the basic network descriptors for the `climpref`, `climinfl` and `gotbook` networks.
+
+```{r echo=TRUE}
+# Find network size and type
+
+
+```
+
+2.  Inspect the dyads, triads and component structure of the `climpref`, `climinfl` and `gotbook` networks.
+
+```{r echo=TRUE}
+# Dyad census, triad census, number and size of components, isolates
+
+
+```
+
+# Creating a dataframe of centrality scores
+
+Create a dataframe of the degree and centrality values that we have already learned about. Call them `climinfl.nodes`, `climpref.nodes` and `gotbook.nodes`. Use the statnet versions of these datasets to attach the values.
+
+```{r echo=TRUE}
+# Create each dataframe with the 
+# (1) vertex names
+# (2) total degree values
+# (3) eigenvector centrality
+# (4) bonacich power
+# (5) reflected and
+# (6) derived eigen values to the dataframe
+
+# head(xxx.nodes) for each dataset to view the top 5 values
+
+```
+
+# Calculating closeness centrality
+
+The closeness centrality of a node is defined as the sum of the geodesic distances between that node and all other nodes in a network. Let's start by just inspecting the closeness scores obtained using the two programs. Because geodesic distance depends on whether or not the network is directed, it is important to get this option correctly specified. In statnet, the option that must be specified is `gmode=("digraph", "graph")`, with `digraph` as the default. In igraph, the option is `mode=("in", "out", "all", "total")` without a clear default option. If the network is undirected, then `mode=` is ignored. Weights, if available as the `weight` edge attribute or specified using the `weight=` option, are used in the calculation of distance.
+
+```{r echo=TRUE}
+# calculate closeness centrality: igraph
+head(igraph::closeness(climpref.ig))
+```
+
+```{r echo=TRUE}
+# calculate closenes centrality: statnet
+head(sna::closeness(climpref.stat, gmode = "graph"))
+```
+
+Once again, the scores returned by the two libraries are very different and it takes some inspection to understand why the difference exists. It turns out that while statnet uses the traditional closeness measure by default, igraph uses the inverse closeness measure. When a graph is not connected (i.e., there are multiple components), then closeness is ill-defined as some nodes aren't reachable from other nodes. An alternative version of closeness using the sum of inverse distance (*suminv*), can be calculated with a similar conceptual underpinning, but it works even on disconnected graphs, as does the related *Gil-Schmidt* power index. It is essential to correctly specify whether the graph is directed or undirected. The centralization measure is set with option `cmode("directed", "undirected", "suminvundir", "suminvdir", "gil=schmidt")`. Although statnet defaults to the first two, the `suminv` scores are often going to be rpeferable--so it makes sense for this to be igraphs default.
+
+```{r echo=TRUE}
+# calculate closeness centrality: statnet
+head(sna::closeness(climpref.stat, gmode = "graph", cmode = "suminvundir"))
+```
+
+Unfortunately, the scores are still not the same. It could be because the two routines are treating the weights differently: statnet is ignoring weights but igraph is not ignoring weights. To check this, we can rerun the commands and allow statnet to use weights.
+
+```{r echo=TRUE}
+# calculate closeness centrality: statnet
+head(sna::closeness(climpref.stat,
+                    gmode = "graph",
+                    cmode = "suminvundir",
+                    ignore.eval = FALSE))
+```
+
+However, it turns out that statnet/sna still ignores the edge weights. This is probably reasonable behavior, unless we are comfortable with the interpretation of weighted geodesic distance. If so, igraph will calculate closeness using weighted geodesic distance.
+
+## Exercise: Closeness Centrality
+
+Using either igraph or statnet, calculate closeness centrality scores for the Swiss Influence network and gotbook network. Can you also add these scores onto the `.nodes` dataframes you created above?
+
+```{r echo=TRUE}
+# calcualte closeness of swiss climate influence
+# add measure to climinfl.nodes
+
+
+# calculate closeness of gotbook
+# add measure to gotbook.nodes
+
+```
+
+# Closeness Centralization
+
+In addition to node-level centrality scores, we can also calculate the network level centralization index for closeness centrality measures. The network centralization index must be extracted from the longer list of items returned by the igraph command `centr_clo()`, with similar options to the ones specified in the igraph `closeness()` command. Statnet uses a generic centralization index command, `centralization()`, but the measure desired for the network-level score must be specified as we have seen in prior weeks.
+
+```{r echo=TRUE}
+# calcualte closeness centralization index: igraph
+igraph::centr_clo(climpref.ig)$centralization
+```
+
+```{r echo=TRUE}
+library(statnet)
+# calculae closeness centralization index: statnet
+centralization(climpref.stat, sna::closeness, mode = "graph")
+
+```
+
+## Exercise: Closeness Centralization
+
+Calculate closeness centralization scores for the climate influence and gotbook networks.
+
+```{r echo=TRUE}
+# calculate closeness centralization swiss climate influence
+
+```
+
+```{r echo=TRUE}
+# calculate closeness centralization of gotbook
+
+```
+
+# Calculate Betweenness Centrality
+
+Betweenness is defined as the number of geodesics on which a node sits. Remember, a geodesic is (if any) the shortest path(s) between any two nodes.
+
+```{r echo=TRUE}
+# calcalte betweenness centrality: igraph
+igraph::betweenness(climpref.ig, directed = FALSE)
+```
+
+```{r echo=TRUE}
+# calcualte betweenness: statnet
+sna::betweenness(climpref.stat, gmode = "graph")
+```
+
+It is clear that the difference between the two is likely due to the use of weights to calculate geodesics by igraph. Setting the option `weights=NA` can avoid weights in igraph.
+
+```{r echo=TRUE}
+head(igraph::betweenness(climpref.ig, directed = FALSE, weights=NA))
+```
+
+## Exercise: Betweenness Centrality
+
+Using either igraph or statnet, calculate betweenness scores for the swiss influence network and gotbook network. Can you also add these scores onto the `.nodes` dataframes you created above?
+
+```{r echo=TRUE}
+# calculate betweenness swiss climate influence
+# add measure to climinfl.nodes
+
+
+
+# calculate betweenness of gotbook
+# add measure to climinfl.nodes
+
+
+# View the highest betweenness scores to answer the assignment:
+
+```
+
+# Betweemmess Centralization
+
+In addition to node-level centrality scores, we can also calculate the network level centralization index for betweenness measures. The network centralization index must be extracted from the longer list of items returned by the igraph command `centr_betw()`. Statnet uses a generic centralization index command, `centralization()` but the measure desired for the network-level score must be specified as we have seen in prior weeks.
+
+```{r echo=TRUE}
+# calculate betweenness centralization index: igraph
+igraph::centr_betw(climpref.ig, directed = FALSE)$centralization
+```
+
+```{r echo=TRUE}
+# calculate betweenness centralization: statnet
+sna::centralization(climpref.stat, sna::betweenness,
+                    mode = "graph")
+```
+
+Note that the same centralization index is calculated despite the different treatment of edge weights.
+
+## Exercise: Betweenness Centralization
+
+Calculate betweenness centralization scores for the climate influence and gotbook networks.
+
+```{r echo=TRUE}
+# calcualte betweenness centralization swiss climate influence
+
+```
+
+```{r echo=TRUE}
+# calculate betweenness centralization of gotbook
+
+```
+
+# Calculate Network Constraint (Burt)
+
+Constraint is a measure of the redundancy of a node's connections. It is bound between 0 and 1, with 0 being a complete lack, and 1 being complete redundancy. The `constraints()` function is only available in igraph, and automatically uses the available weight vector.
+
+```{r echo=TRUE}
+igraph::constraint(climpref.ig)
+```
+
+## Exercise: Network Constraint
+
+Using the `constraint()` function, calculate network constraint scores for the actors in the swiss influence network and gotbook network. Can you also add these scores onto the `.nodes` dataframes you created above? Can you find the nodes with highest and lowest constraint?
+
+```{r echo=TRUE}
+# calculate constraint of swiss climate influence
+# add measure to climinfl.nodes
+
+
+
+# find the nodes with the highest and lowest constraint
+
+
+
+
+```
+
+```{r echo=TRUE}
+# calculate constraint of gotbook characters
+# add measure to gotbook.nodes
+
+
+
+# find the nodes with the highest and lowest constraint
+
+
+
+```
+
+# Gould-Fernandez Brokerage
+
+Gould-Fernandez brokerage is calculated with respect not only to the pattern of ties between vertices, but also the identities of those vertices as captured in a node attribute. For the cliamte network, we will use organization type in 5 categories (`orgtype5`) as the relevant vertex attribute to calculate brokerage. Note that Gould-Fernandez brokerage also requires directed ties. Therefore, Gould-Fernandez brokerage scores can only be calculated for directed networks with vertex attributes, and the `brokerage()` function is only available in statnet.
+
+```{r echo=TRUE}
+#names(sna::brokerage(climinfl.stat, 
+##                     cl = climinfl.nodes$orgtype5))
+
+```
+
+The `brokerage()` function returns a long list of elements, including observed, expected, and standardized brokerage scores. Our primary interest is in the element `brokerage(g)$znli`. This element is a matrix containing five distinct brokerage scores, capturing the normalized number of triads in which the specified node plays one of the five prototypical Gould-Fernandez brokerage roles: coordinator, itinerant, representative, gatekeeper, and liaison. There is also a *total* score returned which is calculated as a sum of the five distinct brokerage roles. Total brokerage can be calculated for undirected networks, but not the breakdown of the 5 brokerage roles. The element `raw.nli` returns the same information but contains the total number of triads instead of the normalized score.
+
+```{r echo=TRUE}
+# return matrix of standardized brokerage scores
+#head(sna::brokerage(climinfl.stat,
+#                    cl = climinfl.nodes$orgtype5)$z.nli)
+```
+
+```{r echo=TRUE}
+# add GF brokerage scores to nodes dataframe
+#temp <- data.frame(sna::brokerage(climinfl.stat,
+#                                  cl = climinfl.nodes$orgtype5)$z.nli)
+
+#temp <- climinfl.nodes %>%
+#  mutate(broker.tot = temp$t,
+#         broker.coord = temp$w_I,
+#         broker.itin = temp$w_O,
+#         broker.rep = temp$b_IO,
+#         broker.gate = temp$b_OI,
+#         broker.lia = temp$b_O)
+
+```
+
+## Exercise: Brokerage
+
+In order to interpret the brokerage scores, let's look again at the `trade100` dataset. The dataframe that you've created with the degree, centralization and brokerage scores for the nodes has been created for you in this tutorial. The brokerage scores for this dataset are used with the vertex attribute 'Continent'. Let's analyze the first and last 10 nodes of this dataset. To do this, use the `arrange` function piped through the `slice` function.
+
+```{r echo=TRUE}
+# arrange in descending order
+
+
+
+```
+
+```{r echo=TRUE}
+# arrange in ascending order 
+
+```
+
+What do you notice about the states with the highest and lowest brokerage values? Can you make any hypotheses based on these scores?
+
+# Histogram and Correlations
+
+We used histograms to inspect the distribution of centrality scores. Can you inspect the distribution of centrality scores in the trade100 dataset? How about the gotbook dataset or both climate datasets? What similarities and differences do you find?
+
+```{r echo=TRUE}
+#trade100.nodes %>%
+#  select(-name, -continent) %>%
+#  gather() %>%
+#  ggplot(aes(value)) +
+#  geom_histogram() +
+#  facet_wrap(~key, scales = "free") +
+#  ggtitle("Trade > 100 million")
+```
+
+```{r echo=TRUE}
+#gotbook.nodes%>%
+#  select(-name) %>% 
+#  gather() %>% 
+#  ggplot(aes(value)) +
+#    geom_histogram() +
+#    facet_wrap(~key, scales = "free") +
+#    ggtitle("GoT Book Co-Mentions")
+```
+
+```{r echo=TRUE}
+#climpref.nodes%>%
+#  select(-name, -orgtype3, -orgtype5) %>% 
+#  gather() %>% 
+#  ggplot(aes(value)) +
+#    geom_histogram() +
+#    facet_wrap(~key, scales = "free") +
+#    ggtitle("GoT Book Co-Mentions")
+```
+
+```{r echo=TRUE}
+#climinfl.nodes%>%
+#  select(-name, -orgtype3, -orgtype5) %>% 
+#  gather() %>% 
+#  ggplot(aes(value)) +
+#    geom_histogram() +
+#    facet_wrap(~key, scales = "free") +
+#    ggtitle("GoT Book Co-Mentions")
+```
+
+Also it is useful to look at the correlations between scores to understand what they are doing in relation to one another. Let's do this for the `trade100` dataset:
+
+```{r}
+# library(corrr)
+#correlations <- trade100.nodes %>%
+#  dplyr::select(totdegree, indegree, outdegree, eigen,
+#         bonpow, close, between, broker.tot,
+#         broker.coord, broker.itin, broker.rep,
+#         broker.gate, broker.lia) %>%
+#  correlate() %>%
+#  rearrange()
+
+#fashion(correlations)
+```
+
+```{r echo=TRUE}
+# visualize correlations
+#rplot(correlations)
+```
+
+## Exercise: Check Correlations of Centrality Measures
+
+Try creating a similar plot for one or more of the other networks using the correct node measure dataframes.
+
+```{r echo=TRUE}
+## climinfl dataset
+
+```
+
+```{r echo=TRUE}
+# rplot()
+```
+
+```{r echo=TRUE}
+## climpref dataset
+
+```
+
+```{r echo=TRUE}
+#rplot
+```
