@@ -23,6 +23,7 @@ library(igraph)
 library(statnet)
 library(concoR)
 library(GGally)
+library(centiserve)
 options(scipen=999)
 ```
 
@@ -148,6 +149,7 @@ cg_tie_df$to <- as.integer(as.factor(cg_tie_df$to))
 
 # Create the network object
 cg_tnet <- as.tnet(cg_tie_df, type = "weighted one-mode tnet")
+cg.ig <- tnet_igraph(cg_tent, type = "weighted one-mode tnet", directed = NULL)
 
 ```
 
@@ -183,7 +185,7 @@ cg.stat <- as.network.matrix(cg_tnet)
 set.vertex.attribute(cg.stat, "name",namesss) 
 con.nodes <- left_join(con.nodes, get.eigen(cg.stat), by = "name")
 colnames(con.nodes)[1] <- "node"
-
+laplacian(cg.ig)
 
 head(con.nodes, 15)
 ```
