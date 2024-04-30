@@ -1,0 +1,35 @@
+---
+title: "Wicked Problems Proposal"
+---
+
+-   **I am studying** How connected do people perceive wicked problems to be. 
+
+-   **Because I want to find out** how flawed individuals view this country to be and how connected they believe problems are with each sharing.
+
+-   **In order to help my reader understand** The concept of a wicked problem and the impact that it has on the countries current political landscape on policy implementation and governance.
+
+<!-- -->
+
+-   **Extracted Concepts**
+
+    -   Wicked problems
+
+    -   Politics
+
+    -   Policy
+
+    -   Governance
+
+    -   perception
+
+<!-- -->
+
+-   **Operationalize the concepts**
+
+    -   **Perception -** This is defined as whether or not the person believes the criteria is fair for the problem the algorithm is solving (Nominal) -Yes or No
+
+    -   **Wicked Problems-** a issue that multiple stakeholders disagree about the best way to solve the problem leading to ineffective policy solutions.
+
+    -    **Governance-** how those impower use the rules to guide citizens
+
+    -   **Policy** - laws and directive put into place for people to follow, courses of action for governing officials. 
