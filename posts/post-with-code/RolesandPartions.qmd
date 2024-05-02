@@ -1,0 +1,195 @@
+---
+title: "Plots by Roles"
+author: "Rylyn Williams"
+format: 
+  html: 
+    df-print: paged
+    embed-resources: true
+    code-fold: true
+    self-contained-math: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r include=FALSE}
+library(tidyverse)
+library(haven)
+library(readr)
+library(readxl)
+library(tnet)
+library(igraph)
+library(statnet)
+library(concoR)
+library(GGally)
+library(centiserve)
+options(scipen=999)
+```
+
+```{r include=FALSE}
+get.eigen<-function(net, attr=NULL){
+    #set attr="weight" if weighted network
+    eigen<-sna::evcent(net)
+    mat<-as.matrix.network(net, attr="weight")
+    diag(mat)<-0
+    mat2<-mat%*%mat
+    rc<-diag(mat2)/rowSums(mat2)
+    dc<-1-rc
+    data.frame(name=net%v%"vertex.names",
+        eigen=eigen,
+        eigen.rc=eigen*rc,
+        eigen.dc=eigen*dc)
+}
+```
+
+```{r include=FALSE}
+#plotting block model
+plot.block<-function(x=blk_mod, main=NULL, cex.lab=1){
+  plot.sociomatrix(x$blocked.data, labels=list(x$plabels,x$plabels),
+                   main=main, drawlines = FALSE, cex.lab=cex.lab)
+  for (j in 2:length(x$plabels)) if (x$block.membership[j] !=
+                                     x$block.membership[j-1]) 
+    abline(v = j - 0.5, h = j - 0.5, lty = 3, xpd=FALSE)
+}
+```
+
+## Data wrangling
+
+```{r}
+#read in data tables from survey, 35 by 9 data table
+q1 <- read_csv("data/q1.csv", show_col_types = FALSE)
+q2 <- read_csv("data/q2.csv", show_col_types = FALSE)
+q3 <- read_csv("data/q3.csv", show_col_types = FALSE)
+q4 <- read_csv("data/q4.csv", show_col_types = FALSE)
+q5 <- read_csv("data/q5.csv", show_col_types = FALSE )
+# remove total row so that it's 35 by 8, including column of concepts
+q1 <- select(q1, -9)
+q2 <- select(q2, -9)
+q3 <- select(q3, -9)
+q4 <- select(q4, -9)
+q5 <- select(q5, -9)
+
+head(q1, 2)
+head(q2, 2)
+head(q3, 2)
+head(q4, 2)
+head(q5, 2)
+
+
+```
+
+```{r}
+# Join columns by term column, to create 35 by 35
+concepts <- left_join(q1,q2,by="...1")
+concepts <- left_join(concepts,q3,by="...1")
+concepts <- left_join(concepts,q4,by="...1")
+concepts <- left_join(concepts,q5,by="...1")
+concepts <- select(concepts, -1)
+rownames(concepts)<-colnames(concepts)
+```
+`
+
+```{r}
+concepts <- as.matrix(concepts)
+#replace NA's with Zero as the value is not missing, there is just no tie so there weight it 0
+concepts[is.na(concepts)] <- 0
+# Set diag to false to remove self loops
+cg <- graph_from_adjacency_matrix(concepts)
+#Save the graph as a data frame that shows each ties and their weight.
+cg_frame <-get.data.frame(cg)
+```
+### Create a tnet object out of single counted actor ties, with weights being the count of the tie appearence
+```{r}
+# Identify unique vertices, I want the definition of a tie, to be the first instance of that connection.
+unique_vertices <- unique(c(cg_frame$from, cg_frame$to))
+valid_vertices <- unique_vertices[nchar(unique_vertices) > 0]
+
+# Create an empty graph
+cg_graph <- graph(edges = numeric(0), directed = FALSE)
+
+# Add vertices to the graph
+cg_graph <- add_vertices(cg_graph, nv = length(valid_vertices), name = valid_vertices)
+
+# Count tie occurrences, the number of times that tie occurs, will be it's strength/weight
+ties_count <- table(apply(cg_frame, 1, function(x) paste(sort(x), collapse = "-")))
+
+# Adjust tie counts for subsequent ties # this will count reverse tiess so B to A where the code above check A to B
+unique_ties <- unique(apply(cg_frame, 1, function(x) paste(sort(x), collapse = "-")))
+for (tie in unique_ties) {
+  ties_count[tie] <- ifelse(ties_count[tie] > 1, ties_count[tie], ties_count[tie] + 1)
+}
+
+# Process ties data
+tie_parts <- strsplit(names(ties_count), "-")
+from_vertices <- sapply(tie_parts, `[`, 1)
+to_vertices <- sapply(tie_parts, `[`, 2)
+weights <- as.vector(ties_count)
+
+# Create a data frame
+cg_tie_df <- data.frame(from = from_vertices, to = to_vertices, weight = weights)
+
+# Print the data frame
+head(cg_tie_df)
+```
+### creating tnet and statnet object
+```{r}
+cg_tie_df$from <- as.integer(as.factor(cg_tie_df$from))
+cg_tie_df$to <- as.integer(as.factor(cg_tie_df$to))
+
+# Create the network object
+cg_tnet <- as.tnet(cg_tie_df, type = "weighted one-mode tnet")
+cg.ig <- tnet_igraph(cg_tnet, type = "weighted one-mode tnet", directed = NULL)
+cg.ig<- add_vertices(cg.ig, nv = length(valid_vertices), name = valid_vertices)
+cg.stat <- as.network.matrix(cg_tnet) 
+```
+
+## Node-Level Measures
+
+```{r}
+#get betweennes, power centrailitty, degree strength (based on weights), closeness, and constraints
+cg.nodes<-data.frame(name=cg.stat%v%"vertex.names",
+        degree.wt=igraph::strength(cg.ig),
+        power.cent =igraph::power_centrality(cg.ig),
+        betweenness=sna::betweenness(cg.stat, gmode="graph"),
+        close=sna::closeness(cg.stat, gmode="graph"),
+        constraint=igraph::constraint(cg.ig))
+eigen_cent_df <- as.data.frame(eigen_centrality(cg.ig))
+eigen_cent_df <- head(eigen_cent_df,35)
+cg.nodes<-cbind(cg.nodes, eigen_cent_df)
+cg.nodes <- head(cg.nodes,35) # don't care about place holder empty columns,
+cg.nodes <- cg.nodes[, 1:8]
+head(cg.nodes, 6)
+```
+
+## Strucutual Equivalnce
+
+```{r}
+#STRUCTUAL Equivalence 
+#Average Cluster Method
+cg.ase <- equiv.clust(cg.stat,
+                          equiv.fun = "sedist",
+                      cluster.method = "average",
+                          method = "hamming", 
+                          mode = "graph")
+plot(cg.ase, cg.ase$glabels)
+```
+
+## Partitioning
+### Height equal to 10
+
+```{r}
+#Partitioning Average Cluster Method -5
+plot(cg.ase,labels = cg.ase$glabels)
+rect.hclust(cg.ase$cluster, h = 5)
+
+
+```
+
+## BlockModeling
+
+```{r}
+#testing block model
+block_ase <-blockmodel(cg.stat, cg.wse, k=9, h=5) #tryin out 5
+#View model
+plot.block(block_wse, cex.lab=.5)
