@@ -21,6 +21,7 @@ library(readxl)
 library(tnet)
 library(igraph)
 library(statnet)
+library(blockmodeling)
 library(concoR)
 library(GGally)
 library(centiserve)
@@ -141,7 +142,9 @@ cg_tie_df$to <- as.integer(as.factor(cg_tie_df$to))
 cg_tnet <- as.tnet(cg_tie_df, type = "weighted one-mode tnet")
 cg.ig <- tnet_igraph(cg_tnet, type = "weighted one-mode tnet", directed = NULL)
 cg.ig<- add_vertices(cg.ig, nv = length(valid_vertices), name = valid_vertices)
-cg.stat <- as.network.matrix(cg_tnet) 
+namesss <-data.frame(id = 1:35, node = colnames(concepts))
+cg.stat <- as.network.matrix(cg_tnet)
+network.vertex.names(cg.stat) <- namesss$node
 ```
 
 ## Node-Level Measures
@@ -190,6 +193,56 @@ rect.hclust(cg.ase$cluster, h = 5)
 
 ```{r}
 #testing block model
-block_ase <-blockmodel(cg.stat, cg.wse, k=9, h=5) #tryin out 5
+block_ase <-blockmodel(cg.stat, cg.ase, k=9, h=5) #tryin out 5
 #View model
-plot.block(block_wse, cex.lab=.5)
+plot.block(block_ase, cex.lab=.5)
+```
+## Centrality by Role
+```{r}
+blk_mod <- blockmodel(cg.stat, cg.ase, k=5)
+# assign block membership to vertex attribute
+cg.stat%v%"role" <- blk_mod$block.membership[match(cg.stat%v%"vertex.names",
+                                                     blk_mod$plabels)]
+
+
+# attach
+cg.nodes$role <- cg.stat%v%"role"
+
+# summarize various network statistics by role
+cg.nodes %>%
+  select(-name) %>%
+  group_by(role) %>%
+  mutate(n=n()) %>%
+  summarise_all(mean, na.rm = TRUE) %>%
+  as.matrix() %>%
+  print(digits=2)
+```
+## Weighted Structure Equivalance
+```{r}
+# need a matric. object
+cg.mat <- as.sociomatrix(cg.stat, attr = "weight")
+cg.sedist <- blockmodeling::sedist(cg.mat)
+cg.weights <- sna::equiv.clust(cg.stat, 
+                        equiv.dist = cg.sedist)
+cg.weights<-sna::equiv.clust(cg.stat,
+                equiv.dist=blockmodeling::sedist(cg.mat))
+
+plot(cg.weights,labels = cg.weights$glabels)
+rect.hclust(cg.weights$cluster, h = 5)
+```
+
+```{r}
+# chosen blockmodel and chose partition partitions
+cg_mod <- blockmodel(cg.stat, cg.ase, k=9)
+# assign block membership to vertex attribute
+cg.stat%v%"role" <- cg_mod$block.membership[match(cg.stat%v%"vertex.names",
+                                                     cg_mod$plabels)]
+
+GGally::ggnet2(cg.stat,
+               node.color = "role",
+               node.size = degree(cg.stat, gmode = "graph"),
+               node.label = "vertex.names",
+               node.alpha = .7)
+```
+`
+
