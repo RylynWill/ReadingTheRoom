@@ -89,7 +89,8 @@ rownames(concepts)<-colnames(concepts)
 namesss <- colnames(concepts)
 
 ```
-`
+
+\`
 
 ```{r}
 concepts <- as.matrix(concepts)
@@ -100,11 +101,13 @@ cg <- graph_from_adjacency_matrix(concepts)
 #Save the graph as a data frame that shows each ties and their weight.
 cg_frame <-get.data.frame(cg)
 ```
+
 ### Create a tnet object out of single counted actor ties, with weights being the count of the tie appearence
+
 ```{r}
-#Identify unique vertices for the purpose of 
+# Identify unique vertices
 unique_vertices <- unique(c(cg_frame$from, cg_frame$to))
-valid_vertices <- unique_vertices[!duplicated(unique_vertices) & nchar(unique_vertices) > 0]
+valid_vertices <- unique_vertices[nchar(unique_vertices) > 0]
 
 # Create an empty graph
 cg_graph <- graph(edges = numeric(0), directed = FALSE)
@@ -115,25 +118,10 @@ cg_graph <- add_vertices(cg_graph, nv = length(valid_vertices), name = valid_ver
 # Count the occurrences of each unique tie
 ties_count <- table(apply(cg_frame, 1, function(x) paste(sort(x), collapse = "-")))
 
-# Add subsequent ties of the same kind to the count of the first instance
-unique_ties <- unique(apply(cg_frame, 1, function(x) paste(sort(x), collapse = "-")))
-for (tie in unique_ties) {
-  if (ties_count[tie] > 1) {
-    first_instance <- which(apply(cg_frame, 1, function(x) paste(sort(x), collapse = "-")) == tie)[1]
-    ties_count[tie] <- ties_count[tie] + (ties_count[tie] - 1)
-    ties_count[tie] <- ties_count[tie] - 1  # Subtract 1 because we're counting the first instance as unique
-  }
-}
-# Add vertices to the graph
-cg_graph <- add_vertices(cg_graph, nv = length(valid_vertices), name = valid_vertices)
-
-# Count the occurrences of each unique tie
-ties_count <- table(apply(cg_frame, 1, function(x) paste(sort(x), collapse = "-")))
-
-unique_ties <- names(ties_count)
-tie_parts <- strsplit(unique_ties, "-")
-from_vertices <- sapply(tie_parts, `[`, 1)
-to_vertices <- sapply(tie_parts, `[`, 2)
+# Extract tie information directly
+tie_info <- strsplit(names(ties_count), "-")
+from_vertices <- sapply(tie_info, `[`, 1)
+to_vertices <- sapply(tie_info, `[`, 2)
 weights <- as.vector(ties_count)
 
 # Create a data frame
@@ -142,14 +130,16 @@ cg_tie_df <- data.frame(from = from_vertices, to = to_vertices, weight = weights
 # Print the data frame
 head(cg_tie_df)
 ```
+
 ### creating tnet and statnet object
+
 ```{r}
 cg_tie_df$from <- as.integer(as.factor(cg_tie_df$from))
 cg_tie_df$to <- as.integer(as.factor(cg_tie_df$to))
 
 # Create the network object
 cg_tnet <- as.tnet(cg_tie_df, type = "weighted one-mode tnet")
-cg.ig <- tnet_igraph(cg_tent, type = "weighted one-mode tnet", directed = NULL)
+cg.ig <- tnet_igraph(cg_tnet, type = "weighted one-mode tnet", directed = NULL)
 
 ```
 
