@@ -199,7 +199,7 @@ plot.block(block_ase, cex.lab=.5)
 ```
 ## Centrality by Role
 ```{r}
-blk_mod <- blockmodel(cg.stat, cg.ase, k=5)
+blk_mod <- blockmodel(cg.stat, cg.ase, k=9)
 # assign block membership to vertex attribute
 cg.stat%v%"role" <- blk_mod$block.membership[match(cg.stat%v%"vertex.names",
                                                      blk_mod$plabels)]
@@ -216,19 +216,6 @@ cg.nodes %>%
   summarise_all(mean, na.rm = TRUE) %>%
   as.matrix() %>%
   print(digits=2)
-```
-## Weighted Structure Equivalance
-```{r}
-# need a matric. object
-cg.mat <- as.sociomatrix(cg.stat, attr = "weight")
-cg.sedist <- blockmodeling::sedist(cg.mat)
-cg.weights <- sna::equiv.clust(cg.stat, 
-                        equiv.dist = cg.sedist)
-cg.weights<-sna::equiv.clust(cg.stat,
-                equiv.dist=blockmodeling::sedist(cg.mat))
-
-plot(cg.weights,labels = cg.weights$glabels)
-rect.hclust(cg.weights$cluster, h = 5)
 ```
 
 ```{r}
