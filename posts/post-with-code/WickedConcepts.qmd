@@ -28,19 +28,19 @@ options(scipen=999)
 ```
 
 ```{r include=FALSE}
-#this funciton is to help with block modeling, as I will be using Eginvector Centrality.
-get.eigen<-function(net, attr=NULL){
-    #set attr="weight" if weighted network
-    eigen<-sna::evcent(net)
-    mat<-as.matrix.network(net, attr=attr)
-    diag(mat)<-0
-    mat2<-mat%*%mat
-    rc<-diag(mat2)/rowSums(mat2)
-    dc<-1-rc
-    data.frame(name=net%v%"vertex.names",
-        eigen=eigen,
-        eigen.rc=eigen*rc,
-        eigen.dc=eigen*dc)
+get.eigen<-function(net){
+    eigen <- sna::evcent(net)
+    adj_matrix <- as.matrix.network(net, attr="weight")  # Use weights as edge strengths
+    diag(adj_matrix) <- 0  # Set diagonal elements to 0
+    degree_strength <- rowSums(adj_matrix)  # Calculate degree strength
+    adj_matrix <- adj_matrix / degree_strength  # Normalize by degree strength
+    mat2 <- adj_matrix %*% adj_matrix
+    rc <- diag(mat2) / rowSums(mat2)
+    dc <- 1 - rc
+    data.frame(name = net %v% "vertex.names",
+               eigen = eigen,
+               eigen.rc = eigen * rc,
+               eigen.dc = eigen * dc)
 }
 ```
 
@@ -86,7 +86,7 @@ concepts <- left_join(concepts,q4,by="...1")
 concepts <- left_join(concepts,q5,by="...1")
 concepts <- select(concepts, -1)
 rownames(concepts)<-colnames(concepts)
-namesss <- colnames(concepts)
+namesss <- tibble(id = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35), name = colnames(concepts))
 
 ```
 `
@@ -102,9 +102,9 @@ cg_frame <-get.data.frame(cg)
 ```
 ### Create a tnet object out of single counted actor ties, with weights being the count of the tie appearence
 ```{r}
-#Identify unique vertices for the purpose of 
+# Identify unique vertices
 unique_vertices <- unique(c(cg_frame$from, cg_frame$to))
-valid_vertices <- unique_vertices[!duplicated(unique_vertices) & nchar(unique_vertices) > 0]
+valid_vertices <- unique_vertices[nchar(unique_vertices) > 0]
 
 # Create an empty graph
 cg_graph <- graph(edges = numeric(0), directed = FALSE)
@@ -112,26 +112,17 @@ cg_graph <- graph(edges = numeric(0), directed = FALSE)
 # Add vertices to the graph
 cg_graph <- add_vertices(cg_graph, nv = length(valid_vertices), name = valid_vertices)
 
-# Count the occurrences of each unique tie
+# Count tie occurrences
 ties_count <- table(apply(cg_frame, 1, function(x) paste(sort(x), collapse = "-")))
 
-# Add subsequent ties of the same kind to the count of the first instance
+# Adjust tie counts for subsequent ties
 unique_ties <- unique(apply(cg_frame, 1, function(x) paste(sort(x), collapse = "-")))
 for (tie in unique_ties) {
-  if (ties_count[tie] > 1) {
-    first_instance <- which(apply(cg_frame, 1, function(x) paste(sort(x), collapse = "-")) == tie)[1]
-    ties_count[tie] <- ties_count[tie] + (ties_count[tie] - 1)
-    ties_count[tie] <- ties_count[tie] - 1  # Subtract 1 because we're counting the first instance as unique
-  }
+  ties_count[tie] <- ifelse(ties_count[tie] > 1, ties_count[tie], ties_count[tie] + 1)
 }
-# Add vertices to the graph
-cg_graph <- add_vertices(cg_graph, nv = length(valid_vertices), name = valid_vertices)
 
-# Count the occurrences of each unique tie
-ties_count <- table(apply(cg_frame, 1, function(x) paste(sort(x), collapse = "-")))
-
-unique_ties <- names(ties_count)
-tie_parts <- strsplit(unique_ties, "-")
+# Process ties data
+tie_parts <- strsplit(names(ties_count), "-")
 from_vertices <- sapply(tie_parts, `[`, 1)
 to_vertices <- sapply(tie_parts, `[`, 2)
 weights <- as.vector(ties_count)
@@ -149,45 +140,22 @@ cg_tie_df$to <- as.integer(as.factor(cg_tie_df$to))
 
 # Create the network object
 cg_tnet <- as.tnet(cg_tie_df, type = "weighted one-mode tnet")
-cg.ig <- tnet_igraph(cg_tent, type = "weighted one-mode tnet", directed = NULL)
-
+cg.ig <- tnet_igraph(cg_tnet, type = "weighted one-mode tnet", directed = NULL)
+cg.ig<- add_vertices(cg.ig, nv = length(valid_vertices), name = valid_vertices)
+cg.stat <- as.network.matrix(cg_tnet) 
 ```
 
 ## Node-Level Measures
 
 ```{r}
-#Out Degree/ out-strength 
-con.outdegree <- degree_w(cg_tnet, measure = c("degree", "output"), type="out", alpha = 1)
-#In Degree/ In-strength 
-con.indegree <- degree_w(cg_tnet, measure = c("degree", "output"), type="in", alpha = 1)
-#closeness
-c_close <- closeness_w(cg_tnet, directed =NULL, gconly = FALSE, alpha = 1)
-#betweeness
-c_btwn <- betweenness_w(cg_tnet, directed =NULL, alpha = 1)
-#constraints
 
-#Rename the columns because the function output names the columns the same regardless of the IN;Out status
-colnames(con.outdegree)[2] <- "Out-Strength"
-colnames(con.outdegree)[3] <- "Out-Degree"
-colnames(con.indegree)[2] <- "In-Strength"
-colnames(con.indegree)[3] <- "In-Degree"
-
-
-#Join the node measures to the same data frame
-con.nodes <-left_join(as.data.frame(con.outdegree), as.data.frame(con.indegree), by= "node")
-con.nodes <-left_join(as.data.frame(con.nodes), as.data.frame(c_close), by= "node")
-con.nodes <-left_join(con.nodes, as.data.frame(c_btwn), by= "node")
-
-
-#temporary rename of node column to "name" to join the evigenor centrality for each nodes to the dataset and then "node" was replaced as the variable name for the nodes
-colnames(con.nodes)[1] <- "name"
-cg.stat <- as.network.matrix(cg_tnet) 
-set.vertex.attribute(cg.stat, "name",namesss) 
-con.nodes <- left_join(con.nodes, get.eigen(cg.stat), by = "name")
-colnames(con.nodes)[1] <- "node"
-laplacian(cg.ig)
-
-head(con.nodes, 15)
+cg.nodes<-data.frame(name=cg.stat%v%"vertex.names",
+        degree.wt=igraph::strength(cg.ig),
+        power.cent =igraph::power_centrality(cg.ig),
+        betweenness=sna::betweenness(cg.stat, gmode="graph"),
+        close=sna::closeness(cg.stat, gmode="graph"),
+        constraint=igraph::constraint(cg.ig))
+cg.nodes <- head(con.nodes,35)
 ```
 
 ## Strucutual Equivalnce
@@ -226,78 +194,33 @@ plot(cg.wse,labels = cg.wse$glabels)
 ```
 
 ## Partitioning
-
-### Height equal to 15
-
-```{r}
-#Partitioning regular clustering - 15
-plot(cg.se,labels = cg.se$glabels)
-rect.hclust(cg.se$cluster, h = 15)
-
-#Partitioning Average Cluster Method - 15
-plot(cg.ase,labels = cg.ase$glabels)
-rect.hclust(cg.ase$cluster, h = 15)
-
-#Partitioning Single Cluster Method - 15
-plot(cg.sse,labels = cg.sse$glabels)
-rect.hclust(cg.sse$cluster, h = 15)
-
-#Partitioning Ward.D method -15
-plot(cg.wse,labels = cg.wse$glabels)
-rect.hclust(cg.se$cluster, h = 15)
-```
-
 ### Height equal to 10
 
 ```{r}
-#Partitioning regular clustering -10
+#Partitioning regular clustering -5
 plot(cg.se,labels = cg.se$glabels)
-rect.hclust(cg.se$cluster, h = 10)
+rect.hclust(cg.se$cluster, h = 5)
 
-#Partitioning Average Cluster Method -10
+#Partitioning Average Cluster Method -5
 plot(cg.ase,labels = cg.ase$glabels)
-rect.hclust(cg.ase$cluster, h = 10)
+rect.hclust(cg.ase$cluster, h = 5)
 
-#Partitioning Single Cluster Method -10
+#Partitioning Single Cluster Method -5
 plot(cg.sse,labels = cg.sse$glabels)
-rect.hclust(cg.sse$cluster, h = 10)
+rect.hclust(cg.sse$cluster, h = 5)
 
-#Partitioning Ward.D method -10
+#Partitioning Ward.D method -5
 plot(cg.wse,labels = cg.wse$glabels)
-rect.hclust(cg.se$cluster, h = 10)
+rect.hclust(cg.se$cluster, h = 5)
+cg.nodes<-full_join(cg.nodes, get.eigen(cg.stat), by="name")
 ```
 
 ## BlockModeling
 
-### Height at 15 k=3
-
 ```{r}
 #testing block model
-block_se <-blockmodel(cg.stat, cg.se, k=3, h=15)
-block_ase <-blockmodel(cg.stat, cg.ase, k=3, h=15)
-block_sse <-blockmodel(cg.stat, cg.sse, k=3, h=15)
-block_wse <-blockmodel(cg.stat, cg.wse, k=5, h=15) #tryin out 5
-
-#View models
-plot.block(block_se, cex.lab=.5)
-plot.block(block_ase, cex.lab=.5)
-plot.block(block_sse, cex.lab=.5)
-plot.block(block_wse, cex.lab=.5)
-```
-
-### Height at 10, k=3
-
-```{r}
-#testing block model
-block_se <-blockmodel(cg.stat, cg.se, k=3, h=10)
-block_ase <-blockmodel(cg.stat, cg.ase, k=3, h=10)
-block_sse <-blockmodel(cg.stat, cg.sse, k=3, h=10)
-block_wse <-blockmodel(cg.stat, cg.wse, k=5, h=10) #tryin out 5
-
-#View models
-plot.block(block_se, cex.lab=.5)
-plot.block(block_ase, cex.lab=.5)
-plot.block(block_sse, cex.lab=.5)
+block_wse <-blockmodel(cg.stat, cg.wse, k=9, h=5) #tryin out 5
+#View model
 plot.block(block_wse, cex.lab=.5)
 ```
 
@@ -307,7 +230,7 @@ plot.block(block_wse, cex.lab=.5)
 
 ```{r}
 # chosen blockmodel and chose partition partitions
-cg_mod <- blockmodel(cg.stat, cg.se, k=5)
+cg_mod <- blockmodel(cg.stat, cg.wse, k=9)
 # assign block membership to vertex attribute
 cg.stat%v%"role" <- cg_mod$block.membership[match(cg.stat%v%"vertex.names",
                                                      cg_mod$plabels)]
