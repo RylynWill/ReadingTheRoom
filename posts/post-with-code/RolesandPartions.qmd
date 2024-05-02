@@ -21,8 +21,6 @@ library(readxl)
 library(tnet)
 library(igraph)
 library(statnet)
-library(blockmodeling)
-library(concoR)
 library(GGally)
 library(centiserve)
 options(scipen=999)
@@ -170,7 +168,7 @@ head(cg.nodes, 6)
 ```{r}
 #STRUCTUAL Equivalence 
 #Average Cluster Method
-cg.ase <- equiv.clust(cg.stat,
+cg.ase <- sna::equiv.clust(cg.stat,
                           equiv.fun = "sedist",
                       cluster.method = "average",
                           method = "hamming", 
@@ -180,7 +178,6 @@ plot(cg.ase, cg.ase$glabels)
 
 ## Partitioning
 ### Height equal to 10
-
 ```{r}
 #Partitioning Average Cluster Method -5
 plot(cg.ase,labels = cg.ase$glabels)
@@ -190,7 +187,6 @@ rect.hclust(cg.ase$cluster, h = 5)
 ```
 
 ## BlockModeling
-
 ```{r}
 #testing block model
 block_ase <-blockmodel(cg.stat, cg.ase, k=9, h=5) #tryin out 5
