@@ -26,6 +26,23 @@ library(centiserve)
 options(scipen=999)
 ```
 
+
+
+```{r include=FALSE}
+
+#Average Cluster Method
+cg.ase <- equiv.clust(cg.stat,
+                          equiv.fun = "sedist",
+                      cluster.method = "average",
+                          method = "hamming", 
+                          mode = "graph")
+plot(cg.ase, cg.ase$glabels)
+cg_mod <- blockmodel(cg.stat, cg.ase, k=9)
+# assign block membership to vertex attribute
+cg.stat%v%"role" <- cg_mod$block.membership[match(cg.stat%v%"vertex.names",
+                                                     cg_mod$plabels)]
+```
+
 # Creating the Graphs Based on Categories
 
 In this section we are looking at the networks and seeing the results clustering. In these directed graphs the in-degree and out-degrees mean the following.
@@ -35,17 +52,6 @@ in-degrees - the node is influenced by the node that is pointing at it.
 out-degree - this node is has an influence on the node it is pointing to.
 
 ```{r}
-# chosen blockmodel and chose partition partitions
-cg_mod <- blockmodel(cg.stat, cg.ase, k=9)
-# assign block membership to vertex attribute
-cg.stat%v%"role" <- cg_mod$block.membership[match(cg.stat%v%"vertex.names",
-                                                     cg_mod$plabels)]
-
-GGally::ggnet2(cg.stat,
-               node.color = "role",
-               node.size = degree(cg.stat, gmode = "graph"),
-               node.label = "vertex.names",
-               node.alpha = .7)
 
 V(cg.ig)$role <- cg_mod$block.membership[match(V(cg.ig)$name, cg_mod$plabels)]
 V(cg.ig)$category <- names.attr$category
