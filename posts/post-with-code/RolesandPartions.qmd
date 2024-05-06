@@ -109,29 +109,3 @@ guides(size = "none") +
 labs(title = "Wicked? Concepts",
 subtitle = "Roles indicate structurally equivalent positions")
 ```
-
-```{r}
-
-classes <- blk_mod$block.membership[order(blk_mod$order.vector)]
-
-V(cg.ig)$role <- cg_mod$block.membership[match(V(cg.ig)$name, cg_mod$plabels)]
-V(cg.ig)$category <- names.attr$category
-# Create an empty list to store subgraphs
-cg.subgraphs <- list()
-
-# Loop through each role and create a subgraph
-for (i in 1:9) {
-  # Get the nodes for the current role
-  role_nodes <- which(cg.stat %v% "role" == i)
-  cat_nodes <- which(cg.stat %v% "category" == i)
-  
-  # Extract the subgraph for the current role
-  cg.subgraphs[[i]] <- induced_subgraph(cg.ig, vids = role_nodes)
-   V(cg.subgraphs[[i]])$node_names <- V(cg.ig)$role[role_nodes]
-}
-
-# Plot each subgraph
-for (i in 1:9) {
-  plot(cg.subgraphs[[i]], main = paste("Subgraph for Role", i))
-}
-```

@@ -1,0 +1,200 @@
+---
+title: "Final Network Graphs by Categories"
+author: "Rylyn Williams"
+format: 
+  html: 
+    df-print: paged
+    embed-resources: true
+    code-fold: true
+    self-contained-math: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r include=FALSE}
+library(tidyverse)
+library(haven)
+library(readr)
+library(readxl)
+library(tnet)
+library(igraph)
+library(statnet)
+library(GGally)
+library(centiserve)
+options(scipen=999)
+```
+
+# Creating the Graphs Based on Categories
+
+In this section we are looking at the networks and seeing the results clustering. In these directed graphs the in-degree and out-degrees mean the following.
+
+in-degrees - the node is influenced by the node that is pointing at it.
+
+out-degree - this node is has an influence on the node it is pointing to.
+
+```{r}
+# chosen blockmodel and chose partition partitions
+cg_mod <- blockmodel(cg.stat, cg.ase, k=9)
+# assign block membership to vertex attribute
+cg.stat%v%"role" <- cg_mod$block.membership[match(cg.stat%v%"vertex.names",
+                                                     cg_mod$plabels)]
+
+GGally::ggnet2(cg.stat,
+               node.color = "role",
+               node.size = degree(cg.stat, gmode = "graph"),
+               node.label = "vertex.names",
+               node.alpha = .7)
+
+V(cg.ig)$role <- cg_mod$block.membership[match(V(cg.ig)$name, cg_mod$plabels)]
+V(cg.ig)$category <- names.attr$category
+# Create an empty list to store subgraphs
+cg.subgraphs <- list()
+
+# Loop through each role and create a subgraph
+for (i in 1:9) {
+  # Get the nodes for the current role
+  role_nodes <- which(cg.stat %v% "role" == i)
+  cat_nodes <- which(cg.stat %v% "category" == i)
+  
+  # Extract the subgraph for the current role
+  cg.subgraphs[[i]] <- induced_subgraph(cg.ig, vids = role_nodes)
+   V(cg.subgraphs[[i]])$node_names <- V(cg.ig)$role[role_nodes]
+}
+```
+
+## Power Dynamics
+
+Topics related to the exertion, distribution, and dynamics of power in society, politics, and economics. This category encompasses topics such as imperialism, racism, colonization, capitalism, and other forms of power dynamics.
+
+**Imperialism** is the node with the most influence, as it has the strongest out degree.
+
+**Colonization** is the most influenced, as it has the strongest in degree.
+
+```{r}
+plot(cg.subgraphs[[1]], layout = layout_with_fr(cg.subgraphs[[1]]), 
+     main = "Power Dynamics",
+     vertex.label.color = "black", vertex.label.family = "sans",
+     vertex.label.dist = 1.5, edge.width = 2)
+```
+
+## Social Infrastructure
+
+Topics related to the foundational elements of society that support its functioning, including housing, education, infrastructure, and criminal justice.
+
+For this category **Housing** is the overarching concept, affecting the other three nodes. What's also interesting is that Housing had the highest rating as a problem in the United States
+
+**Criminal Justice** has the highest in-degree being influenced by all other concepts.
+
+```{r}
+plot(cg.subgraphs[[2]], layout = layout_with_fr(cg.subgraphs[[2]]), 
+     main = "Social Infrustructure",
+     vertex.label.color = "black", vertex.label.family = "sans",
+     vertex.label.dist = 1.5, edge.width = 2)
+```
+
+## Economic & Government Structure
+
+Topics concerning the economic system, government structures, and their interactions, including economy, income/wealth, corporate wealth, federal/government structure, and related aspects.
+
+**Transportation** has the highest out-degree
+
+**Corporate wealth** &. **Fed/Govt structure.** has the highest in-degree
+
+```{r}
+plot(cg.subgraphs[[3]], layout = layout_with_fr(cg.subgraphs[[3]]), 
+     main = "Economic & Government Structure",
+     vertex.label.color = "black", vertex.label.family = "sans",
+     vertex.label.dist = 1.5, edge.width = 2)
+```
+
+## Regulation & Control
+
+Topics pertaining to regulatory measures, control mechanisms, and governance practices, such as gun control, banking regulations, voting access, and other forms of regulation.
+
+**Gun control** has the highest out degree influencing the other two nodes
+
+**Voting Access** has the highest in degree being influenced by both nodess
+
+```{r}
+plot(cg.subgraphs[[4]], layout = layout_with_fr(cg.subgraphs[[4]]), 
+     main = "Regulation & Control",
+     vertex.label.color = "black", vertex.label.family = "sans",
+     vertex.label.dist = 1.5, edge.width = 2)
+```
+
+## Global Challenges
+
+Topics addressing global issues and challenges that transcend national boundaries, including climate change, child poverty, nationalizing, digital literacy, and other global challenges.
+
+**Climate Change** has the highest out-degree
+
+**Digital Literacy** has the highest in-degree
+
+```{r}
+plot(cg.subgraphs[[5]], layout = layout_with_fr(cg.subgraphs[[5]]), 
+     main = "Global Challanges",
+     vertex.label.color = "black", vertex.label.family = "sans",
+     vertex.label.dist = 1.5, edge.width = 2)
+```
+
+## Social & Global Issues
+
+Topics encompassing social and global issues that impact societies worldwide, such as AI, immigration, misinformation, pollution & plastic, and indigenous sovereignty.
+
+**AI** has the highest out-degree
+
+**Pollution & Plastic** has the highest in-degree
+
+```{r}
+plot(cg.subgraphs[[6]], layout = layout_with_fr(cg.subgraphs[[6]]), 
+     main = "Social & Global Issues",
+     vertex.label.color = "black", vertex.label.family = "sans",
+     vertex.label.dist = 1.5, edge.width = 2)
+```
+
+## Trust & Rights
+
+Topics revolving around trust, rights, and societal values, including weakening of the global West, public trust, homeless rights, welfare systems, and civil rights.
+
+**Homeless Rights** has the highest in degree
+
+**Indigenous Sovereignty** has the highest out degree
+
+```{r}
+plot(cg.subgraphs[[7]], layout = layout_with_fr(cg.subgraphs[[7]]), 
+     main = "Trust & Rights",
+     vertex.label.color = "black", vertex.label.family = "sans",
+     vertex.label.dist = 1.5, edge.width = 2)
+```
+
+## Media & Governance
+
+Topics concerning media, journalism, governance, and their roles in society, including journalism/media, foreign policy, insider trading, generational wealth, and Eurocentrism.
+
+**Welfare Systems** has the highest out degree
+
+**Insider trading** has the highest In- degree
+
+```{r}
+plot(cg.subgraphs[[8]], layout = layout_with_fr(cg.subgraphs[[8]]), 
+     main = "Media & Governence",
+     vertex.label.color = "black", vertex.label.family = "sans",
+     vertex.label.dist = 1.5, edge.width = 2)
+```
+
+## Cultural Awareness & Equity
+
+Topics focusing on cultural awareness, equity, and diversity, such as cultural awareness & equity and Eurocentrism.
+
+**Generational wealth** has the highest in degree going to the only other node in the catergory
+
+```{r}
+
+plot(cg.subgraphs[[9]], layout = layout_with_fr(cg.subgraphs[[9]]), 
+     main = "Cultural Awareness & Equity",
+     vertex.label.color = "black", vertex.label.family = "sans",
+     vertex.label.dist = 1.5, edge.width = 2)
+
+```

@@ -122,7 +122,11 @@ Topics pertaining to regulatory measures, control mechanisms, and governance pra
 
 #### Global Challenges:
 
-Topics addressing global issues and challenges that transcend national boundaries, including climate change, child poverty, nationalizing, digital literacy, and other global challenges. Social & Global Issues: Topics encompassing social and global issues that impact societies worldwide, such as AI, immigration, misinformation, pollution & plastic, and indigenous sovereignty.
+Topics addressing global issues and challenges that transcend national boundaries, including climate change, child poverty, nationalizing, digital literacy, and other global challenges. 
+
+#### Social & Global Issues: 
+
+Topics encompassing social and global issues that impact societies worldwide, such as AI, immigration, misinformation, pollution & plastic, and indigenous sovereignty.
 
 #### Trust & Rights:
 
@@ -130,4 +134,7 @@ Topics revolving around trust, rights, and societal values, including weakening 
 
 #### Media & Governance:
 
-Topics concerning media, journalism, governance, and their roles in society, including journalism/media, foreign policy, insider trading, generational wealth, and Eurocentrism. Cultural Awareness & Equity: Topics focusing on cultural awareness, equity, and diversity, such as cultural awareness & equity and Eurocentrism.
+Topics concerning media, journalism, governance, and their roles in society, including journalism/media, foreign policy, insider trading, generational wealth, and Eurocentrism. 
+
+#### Cultural Awareness & Equity: 
+Topics focusing on cultural awareness, equity, and diversity, such as cultural awareness & equity and Eurocentrism.
