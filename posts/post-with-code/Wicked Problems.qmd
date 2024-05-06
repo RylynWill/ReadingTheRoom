@@ -22,7 +22,7 @@ What are the perceived connections between these concepts and how can they be gr
 
 ## Hypothesis
 
-I am expecting to find imperialism as a key influence in one of the groups, I also expect economy and the gov't structure to be in the same group.
+I am expecting to find imperialism as a key influence in one of the groups, I also expect economy and the govt structure to be in the same group.
 
 The largest problem im expecting is Racism and the Economy as these are major issues in the news in the past couple of years between the BLM protest, January 6th and inflation after the pandemic.
 
@@ -62,7 +62,9 @@ ggplot(counts, aes(x = factor(region), y = count, fill = party_id)) +
 
 ## Concept ratings
 
-Survey Analysis - Based on survey results the respondents rated how much of a problem they believed each concept to be on a scale of 1 to 5. From there I averaged the results for each concept and plotted them on a bar graph. \#### concepts rating by party idea
+Survey Analysis - Based on survey results the respondents rated how much of a problem they believed each concept to be on a scale of 1 to 5. From there I averaged the results for each concept and plotted them on a bar graph.
+
+#### concepts rating by party idea
 
 ```{r}
 pivot_demog <- pivot_longer(demog, cols = Imperialism:Eurocentrism, names_to = "Concept", values_to = "Ratings")
@@ -122,9 +124,9 @@ Topics pertaining to regulatory measures, control mechanisms, and governance pra
 
 #### Global Challenges:
 
-Topics addressing global issues and challenges that transcend national boundaries, including climate change, child poverty, nationalizing, digital literacy, and other global challenges. 
+Topics addressing global issues and challenges that transcend national boundaries, including climate change, child poverty, nationalizing, digital literacy, and other global challenges.
 
-#### Social & Global Issues: 
+#### Social & Global Issues:
 
 Topics encompassing social and global issues that impact societies worldwide, such as AI, immigration, misinformation, pollution & plastic, and indigenous sovereignty.
 
@@ -134,7 +136,8 @@ Topics revolving around trust, rights, and societal values, including weakening 
 
 #### Media & Governance:
 
-Topics concerning media, journalism, governance, and their roles in society, including journalism/media, foreign policy, insider trading, generational wealth, and Eurocentrism. 
+Topics concerning media, journalism, governance, and their roles in society, including journalism/media, foreign policy, insider trading, generational wealth, and Eurocentrism.
 
-#### Cultural Awareness & Equity: 
+#### Cultural Awareness & Equity:
+
 Topics focusing on cultural awareness, equity, and diversity, such as cultural awareness & equity and Eurocentrism.
