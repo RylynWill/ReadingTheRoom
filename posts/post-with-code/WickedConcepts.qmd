@@ -57,7 +57,7 @@ plot.block<-function(x=blk_mod, main=NULL, cex.lab=1){
 
 ## Data wrangling
 
-```{r}
+```{r include =FALSE}
 #read in data tables from survey, 35 by 9 data table
 q1 <- read_csv("data/q1.csv", show_col_types = FALSE)
 q2 <- read_csv("data/q2.csv", show_col_types = FALSE)
@@ -70,7 +70,9 @@ q2 <- select(q2, -9)
 q3 <- select(q3, -9)
 q4 <- select(q4, -9)
 q5 <- select(q5, -9)
+```
 
+```{r}
 head(q1, 2)
 head(q2, 2)
 head(q3, 2)

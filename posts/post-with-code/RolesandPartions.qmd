@@ -38,6 +38,7 @@ plot.block<-function(x=blk_mod, main=NULL, cex.lab=1){
 ```
 
 ## Centrality by Role
+
 ```{r}
 blk_mod <- blockmodel(cg.stat, cg.ase, k=9)
 # assign block membership to vertex attribute
@@ -109,7 +110,6 @@ labs(title = "Wicked? Concepts",
 subtitle = "Roles indicate structurally equivalent positions")
 ```
 
-
 ```{r}
 
 classes <- blk_mod$block.membership[order(blk_mod$order.vector)]
@@ -135,4 +135,3 @@ for (i in 1:9) {
   plot(cg.subgraphs[[i]], main = paste("Subgraph for Role", i))
 }
 ```
-
